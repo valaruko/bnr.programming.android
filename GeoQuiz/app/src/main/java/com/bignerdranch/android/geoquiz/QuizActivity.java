@@ -1,5 +1,6 @@
 package com.bignerdranch.android.geoquiz;
 
+import android.app.Activity;
 import android.content.Intent;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -21,6 +22,9 @@ public class QuizActivity extends AppCompatActivity {
     private TextView mQuestionTextView;
     private static final String TAG = "QuizActivity";
     private static final String KEY_INDEX = "index";
+    private static final int REQUEST_CODE_CHEAT = 0;
+    private boolean mIsCheater;
+    private static final String CHEATED_QUESTIONS = "cheated_questions";
 
     private Question[] mQuestionBank = new Question[] {
             new Question(R.string.question_oceans, true),
@@ -30,14 +34,28 @@ public class QuizActivity extends AppCompatActivity {
             new Question(R.string.question_asia, true)
     };
     private int mCurrentIndex = 0;
-
+    private boolean[] mCheatedQuestions;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_quiz);
 
+        mCheatedQuestions = new boolean[mQuestionBank.length];
+        for (int i=0; i < mCheatedQuestions.length; i++) {
+            mCheatedQuestions[i] = false;
+        }
+
         if (savedInstanceState != null) {
             mCurrentIndex = savedInstanceState.getInt(KEY_INDEX, 0);
+            String cheatedQuestions = savedInstanceState.getString(CHEATED_QUESTIONS, "");
+            if (!cheatedQuestions.isEmpty()) {
+                String[] cheatedValues = cheatedQuestions.split(",");
+                for (int i=0; i < mCheatedQuestions.length; i++) {
+                    if (cheatedValues.length >= i) {
+                        mCheatedQuestions[i] = Boolean.parseBoolean(cheatedValues[i]);
+                    }
+                }
+            }
         }
 
         mQuestionTextView = (TextView)findViewById(R.id.question_text_view);
@@ -64,7 +82,7 @@ public class QuizActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) {
                 Intent intent = CheatActivity.newIntent(QuizActivity.this, mQuestionBank[mCurrentIndex].isAnswerTrue());
-                startActivity(intent);
+                startActivityForResult(intent, REQUEST_CODE_CHEAT);
             }
         });
 
@@ -115,9 +133,12 @@ public class QuizActivity extends AppCompatActivity {
     private void checkAnswer(boolean userPressedTrue) {
         boolean answerIsTrue = mQuestionBank[mCurrentIndex].isAnswerTrue();
         int messageResourceId = R.string.incorrect_toast;
-
-        if (userPressedTrue == answerIsTrue) {
-            messageResourceId = R.string.correct_toast;
+        if (mCheatedQuestions[mCurrentIndex]) {
+            messageResourceId = R.string.judgement_toast;
+        } else {
+            if (userPressedTrue == answerIsTrue) {
+                messageResourceId = R.string.correct_toast;
+            }
         }
 
         Toast.makeText(QuizActivity.this, messageResourceId, Toast.LENGTH_SHORT)
@@ -158,5 +179,27 @@ public class QuizActivity extends AppCompatActivity {
         super.onSaveInstanceState(savedInstanceState);
         Log.i(TAG, "onSaveInstanceState");
         savedInstanceState.putInt(KEY_INDEX, mCurrentIndex);
+
+        String cheatedQuestions = String.valueOf(mCheatedQuestions[0]);
+        for (int i = 1; i < mCheatedQuestions.length; i++) {
+            cheatedQuestions += "," + String.valueOf(mCheatedQuestions[i]);
+        }
+        savedInstanceState.putString(CHEATED_QUESTIONS, cheatedQuestions);
+
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (resultCode != Activity.RESULT_OK) {
+            return;
+        }
+
+        if (requestCode == REQUEST_CODE_CHEAT) {
+            if (data == null) {
+                return;
+            }
+
+            mCheatedQuestions[mCurrentIndex] = CheatActivity.wasAnswerShown(data);
+        }
     }
 }
