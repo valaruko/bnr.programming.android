@@ -1,5 +1,7 @@
 package com.bignerdranch.android.criminalintent;
 
+import android.app.Activity;
+import android.content.Intent;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.text.Editable;
@@ -13,12 +15,15 @@ import android.widget.CompoundButton;
 import android.widget.EditText;
 
 import java.text.SimpleDateFormat;
+import java.util.UUID;
 
 /**
  * Created by valarauko on 2/26/2017.
  */
 
 public class CrimeFragment extends Fragment {
+    private static String ARG_CRIME_ID = "crime_id";
+    public static String RESULT_CRIME_ID = "com.bignerdranch.android.criminalintent.crimefragment.resultcrimeid";
     private Crime mCrime;
     private EditText mTitleField;
     private Button mDateButton;
@@ -27,7 +32,10 @@ public class CrimeFragment extends Fragment {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        mCrime = new Crime();
+        UUID crimeId = (UUID) getArguments().getSerializable(ARG_CRIME_ID);
+
+        mCrime = CrimeLab.get(getActivity()).getCrime(crimeId);
+
     }
 
     @Override
@@ -35,6 +43,7 @@ public class CrimeFragment extends Fragment {
         View view = inflater.inflate(R.layout.fragment_crime, container, false);
 
         mTitleField = (EditText)view.findViewById(R.id.crime_title);
+        mTitleField.setText(mCrime.getTitle());
         mTitleField.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {
@@ -57,6 +66,7 @@ public class CrimeFragment extends Fragment {
         mDateButton.setEnabled(false);
 
         mSolvedCheckBox = (CheckBox)view.findViewById(R.id.crime_solved);
+        mSolvedCheckBox.setChecked(mCrime.isSolved());
         mSolvedCheckBox.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(CompoundButton compoundButton, boolean isChecked) {
@@ -65,6 +75,24 @@ public class CrimeFragment extends Fragment {
             }
         });
 
+        returnResult();
+
         return view;
+    }
+
+    public static CrimeFragment newInstance(UUID crimeId) {
+        Bundle args = new Bundle();
+        args.putSerializable(ARG_CRIME_ID, crimeId);
+
+        CrimeFragment fragment = new CrimeFragment();
+        fragment.setArguments(args);
+
+        return fragment;
+    }
+
+    public void returnResult() {
+        Intent data = new Intent();
+        data.putExtra(RESULT_CRIME_ID, mCrime.getId());
+        getActivity().setResult(Activity.RESULT_OK, data);
     }
 }
